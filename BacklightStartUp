@@ -1,0 +1,53 @@
+#!/bin/bash
+
+#Written by Jakub Pol.
+
+#This is a script that acts like a wrapper for xbacklight, keeping track of a laptop's monitor brightness and allowing it to stay the same percentage across login sessions 
+
+action=$1
+value=$2
+
+#If help is called, script only outputs help text
+if [ "$action" == "-h" ]; then 
+	echo "	-l = sets monitor backlight/brightness to previous sessions brightness, if the memory file doesn't exist, will set backlight/brightnes to x, x being the 2nd parameter"
+	echo "	-i = inscreases backlight/brightness by x, x being the 2nd parameter"
+	echo "	-d = decreases backlight/brightness by x, x being the 2nd parameter"
+	exit
+fi
+
+if [[ $(echo "$action" | cut -c1) == - && $(python3 -c "print('$value'.isnumeric())") == True ]]; then #requires a numeric value always, even for -l so that it can be used as a fallback.
+
+	#Creates a text file to store percentage, unless one already exists 
+	if ! [ -d ~/.script_memory ]; then
+		mkdir ~/.script_memory
+		touch ~/.script_memory/mon_backlight.txt
+	elif ! [ -e ~/.script_memory/mon_backlight.txt ]; then
+		touch ~/.script_memory/mon_backlight.txt
+	fi
+
+	Backlight=$(cut -d '.' -f1 < ~/.script_memory/mon_backlight.txt) #pulls value from file, ignoring decimals 
+
+	case $(echo "$1" | cut -c2) in
+		l)
+			if [[ $(python3 -c "print('$Backlight'.isnumeric())") == True ]]; then #value of Backlight should always be a number, if it isn't, the parameter set is a fall back
+				xbacklight -set "$Backlight"
+			else
+				xbacklight -set "$value" #allows for setting a default, so if there is no file, it will use the value parameter  
+			fi
+			echo "$(xbacklight -get)" > ~/.script_memory/mon_backlight.txt
+		       	;;
+		i)
+			xbacklight -inc "$value"
+			echo "$(xbacklight -get)" > ~/.script_memory/mon_backlight.txt
+			;;
+		d)
+			xbacklight -dec "$value"
+			echo "$(xbacklight -get)" > ~/.script_memory/mon_backlight.txt
+			;;
+		*)
+			echo "You must specify a supported action, used "BacklightStartup -h" for help"
+			;;
+	esac
+else
+	echo "You must specify an action in the first parameter and a value (0-100) in the second parameter use "BacklightStartup -h" for help"
+fi
